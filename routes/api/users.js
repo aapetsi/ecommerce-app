@@ -2,6 +2,9 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const router = express.Router();
 
+// Load Input Validation
+const validateRegisterInput = require("../../validation/register");
+
 // Load User model
 const User = require("../../models/user");
 
@@ -14,11 +17,18 @@ router.get("/test", (req, res) => res.json({ msg: "Users route works" }));
 // @desc    Register user
 // @access  Public
 router.post("/register", (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, password2 } = req.body;
+  const { errors, isValid } = validateRegisterInput(req.body);
+
+  // Check Validation
+  if (!isValid) {
+    return res.status(400).json(errors);
+  }
   User.findOne({ email })
     .then(user => {
       if (user) {
-        res.send("User already exists");
+        errors.email = "User already exists";
+        return res.status(400).json(errors);
       } else {
         const newUser = new User({ name, email, password });
         bcrypt.genSalt(10, (error, salt) => {
@@ -27,9 +37,7 @@ router.post("/register", (req, res) => {
             newUser.password = hash;
             newUser
               .save()
-              .then(user => {
-                res.send(user);
-              })
+              .then(user => res.json(user))
               .catch(err => console.log(err));
           });
         });
